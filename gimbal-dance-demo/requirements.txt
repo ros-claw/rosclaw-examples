@@ -1,0 +1,13 @@
+# ROSClaw Gimbal Dance Demo — Python Dependencies
+# 安装: uv pip install -r requirements.txt
+
+# 核心依赖 (必需)
+pyserial>=3.5
+pyyaml>=6.0
+
+# 音乐分析依赖 (可选，用于真实音频分析)
+librosa>=0.10.0
+numpy>=1.24
+
+# MCP 支持 (如需作为 MCP Server 运行)
+# mcp[fastmcp]>=1.0.0

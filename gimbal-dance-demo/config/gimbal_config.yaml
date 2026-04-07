@@ -1,19 +1,14 @@
-# ROSClaw Dance Demo — Gimbal Hardware Configuration
-# 10 GCU gimbals connected via USB Hub (USB-to-Serial adapters)
-# Each gimbal must have a unique CAN/serial ID set via its configuration tool.
-#
-# Hardware topology:
-#   USB Hub
-#   ├── Port 1 → Gimbal  1 (COM3  / /dev/ttyUSB0)  ← Drummer 1
-#   ├── Port 2 → Gimbal  2 (COM4  / /dev/ttyUSB1)  ← Drummer 2
-#   ├── Port 3 → Gimbal  3 (COM5  / /dev/ttyUSB2)  ← Drummer 3
-#   ├── Port 4 → Gimbal  4 (COM6  / /dev/ttyUSB3)  ← Vocal 1
-#   ├── Port 5 → Gimbal  5 (COM7  / /dev/ttyUSB4)  ← Vocal 2
-#   ├── Port 6 → Gimbal  6 (COM8  / /dev/ttyUSB5)  ← Vocal 3
-#   ├── Port 7 → Gimbal  7 (COM9  / /dev/ttyUSB6)  ← Vocal 4
-#   ├── Port 8 → Gimbal  8 (COM10 / /dev/ttyUSB7)  ← Spotlight 1
-#   ├── Port 9 → Gimbal  9 (COM11 / /dev/ttyUSB8)  ← Spotlight 2
-#   └── Port 10 → Gimbal 10 (COM12 / /dev/ttyUSB9)  ← Spotlight 3
+# ROSClaw Dance Demo — 6 Gimbals Configuration
+# 6台云台一字排开，从左到右：1-6
+# 
+# 硬件拓扑:
+#   USB Hub (带独立供电)
+#   ├── Port 1 → Gimbal  1 (/dev/ttyUSB0 或 /dev/ttyCH341USB0)  ← Left 1
+#   ├── Port 2 → Gimbal  2 (/dev/ttyUSB1)  ← Left 2
+#   ├── Port 3 → Gimbal  3 (/dev/ttyUSB2)  ← Center 1
+#   ├── Port 4 → Gimbal  4 (/dev/ttyUSB3)  ← Center 2
+#   ├── Port 5 → Gimbal  5 (/dev/ttyUSB4)  ← Right 1
+#   └── Port 6 → Gimbal  6 (/dev/ttyUSB5)  ← Right 2
 
 serial:
   baudrate: 115200
@@ -23,75 +18,51 @@ serial:
   timeout: 0.01
 
 gimbals:
-  # ── Drummer Group (tilt-dominant: headbang) ──────────────────────────────
+  # ── Left Group (左1-2): 节奏型 ───────────────────────────────────────────
   - id: 1
-    port: COM3        # Linux: /dev/ttyUSB0
+    port: /dev/ttyCH341USB0    # Linux CH341串口，根据实际情况修改
     group: drummers
-    label: "Drummer 1"
-    position: { x: -1.5, y: 0.0 }   # physical position on stage (meters)
+    label: "Left 1"
+    position: { x: -2.5, y: 0.0 }
 
   - id: 2
-    port: COM4
+    port: /dev/ttyCH341USB1
     group: drummers
-    label: "Drummer 2"
-    position: { x: 0.0, y: 0.0 }
+    label: "Left 2"
+    position: { x: -1.5, y: 0.0 }
 
+  # ── Center Group (中3-4): 波浪型 ─────────────────────────────────────────
   - id: 3
-    port: COM5
-    group: drummers
-    label: "Drummer 3"
+    port: /dev/ttyCH341USB2
+    group: vocals
+    label: "Center 1"
+    position: { x: -0.5, y: 0.0 }
+
+  - id: 4
+    port: /dev/ttyCH341USB3
+    group: vocals
+    label: "Center 2"
+    position: { x: 0.5, y: 0.0 }
+
+  # ── Right Group (右5-6): 追光型 ──────────────────────────────────────────
+  - id: 5
+    port: /dev/ttyCH341USB4
+    group: spotlight
+    label: "Right 1"
     position: { x: 1.5, y: 0.0 }
 
-  # ── Vocal Group (pan-dominant: sweep / wave) ─────────────────────────────
-  - id: 4
-    port: COM6
-    group: vocals
-    label: "Vocal 1"
-    position: { x: -2.0, y: 1.0 }
-
-  - id: 5
-    port: COM7
-    group: vocals
-    label: "Vocal 2"
-    position: { x: -0.7, y: 1.0 }
-
   - id: 6
-    port: COM8
-    group: vocals
-    label: "Vocal 3"
-    position: { x: 0.7, y: 1.0 }
-
-  - id: 7
-    port: COM9
-    group: vocals
-    label: "Vocal 4"
-    position: { x: 2.0, y: 1.0 }
-
-  # ── Spotlight Group (both axes: figure8 / strobe_center) ─────────────────
-  - id: 8
-    port: COM10
+    port: /dev/ttyCH341USB5
     group: spotlight
-    label: "Spotlight 1"
-    position: { x: -1.0, y: 2.0 }
+    label: "Right 2"
+    position: { x: 2.5, y: 0.0 }
 
-  - id: 9
-    port: COM11
-    group: spotlight
-    label: "Spotlight 2"
-    position: { x: 0.0, y: 2.0 }
-
-  - id: 10
-    port: COM12
-    group: spotlight
-    label: "Spotlight 3"
-    position: { x: 1.0, y: 2.0 }
-
-# Safety limits (applied in rhythm_engine.py)
+# Safety limits
 limits:
   max_pan_deg:   120.0
   max_tilt_deg:   60.0
   min_tilt_deg:  -80.0
-  tick_hz:        50      # hardware command frequency
+  tick_hz:        50
 
 # Demo presets
 presets:

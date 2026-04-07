@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎋 赛博竹林七贤 - 实时可视化</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', monospace;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #eee;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-bottom: 2px solid #00d4ff;
+        }
+        
+        .header h1 {
+            color: #00d4ff;
+            font-size: 2.5em;
+            text-shadow: 0 0 20px rgba(0,212,255,0.5);
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #888;
+            font-size: 14px;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        /* 左侧：波形和3D可视化 */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .panel {
+            background: rgba(22,33,62,0.8);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #333;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .panel h2 {
+            color: #ff6b6b;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .panel h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #ff6b6b;
+            border-radius: 2px;
+        }
+        
+        /* 音频波形 */
+        .waveform-container {
+            height: 150px;
+            position: relative;
+            background: #0a0a1a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        #waveform-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .beat-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #333;
+            transition: all 0.1s;
+        }
+        
+        .beat-indicator.active {
+            background: #ff0066;
+            box-shadow: 0 0 20px #ff0066;
+            transform: scale(1.2);
+        }
+        
+        /* 3D云台可视化 */
+        .gimbal-3d-container {
+            height: 300px;
+            position: relative;
+            background: #0a0a1a;
+            border-radius: 8px;
+        }
+        
+        #gimbal-3d-canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* 右侧：云台数据 */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .gimbal-card {
+            background: rgba(22,33,62,0.8);
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 4px solid #00d4ff;
+            transition: all 0.3s;
+        }
+        
+        .gimbal-card:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 4px 15px rgba(0,212,255,0.2);
+        }
+        
+        .gimbal-card.g4 {
+            border-left-color: #ff0066;
+            background: rgba(255,0,102,0.1);
+        }
+        
+        .gimbal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .gimbal-name {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        
+        .gimbal-card.g4 .gimbal-name {
+            color: #ff0066;
+        }
+        
+        .gimbal-role {
+            font-size: 11px;
+            color: #888;
+            background: rgba(0,0,0,0.3);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        
+        .angle-display {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .angle-box {
+            text-align: center;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 6px;
+        }
+        
+        .angle-label {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        
+        .angle-value {
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .angle-value.roll { color: #ff6b6b; }
+        .angle-value.pitch { color: #4ecdc4; }
+        .angle-value.yaw { color: #ffe66d; }
+        
+        /* 状态栏 */
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.9);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 2px solid #00d4ff;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-label {
+            color: #888;
+            font-size: 12px;
+        }
+        
+        .status-value {
+            color: #00d4ff;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .connection-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff4444;
+            transition: all 0.3s;
+        }
+        
+        .connection-dot.connected {
+            background: #44ff44;
+            box-shadow: 0 0 10px #44ff44;
+        }
+        
+        /* 相位条 */
+        .phase-bar {
+            display: flex;
+            height: 40px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 20px 0;
+            position: relative;
+        }
+        
+        .phase-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.8);
+            position: relative;
+        }
+        
+        .phase-segment.intro { background: #2E86AB; flex: 4; }
+        .phase-segment.g4_solo { background: #A23B72; flex: 8; }
+        .phase-segment.unison { background: #F18F01; flex: 12; }
+        .phase-segment.outro { background: #3B1F2B; flex: 4.76; }
+        
+        .phase-segment.active {
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.5);
+        }
+        
+        .progress-indicator {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #fff;
+            box-shadow: 0 0 10px #fff;
+            transition: left 0.1s linear;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .right-panel {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+            .gimbal-card {
+                flex: 1;
+                min-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎋 赛博竹林七贤</h1>
+        <div class="subtitle">Cyber-Bamboo Sages | 实时可视化监控 | BPM: 120.0</div>
+    </div>
+    
+    <div class="main-container">
+        <div class="left-panel">
+            <!-- 音频波形 -->
+            <div class="panel">
+                <h2>🎵 音频波形 / Audio Waveform</h2>
+                <div class="waveform-container">
+                    <canvas id="waveform-canvas"></canvas>
+                    <div class="beat-indicator" id="beat-indicator"></div>
+                </div>
+            </div>
+            
+            <!-- 编舞相位 -->
+            <div class="panel">
+                <h2>📊 编舞相位 / Choreography Phase</h2>
+                <div class="phase-bar">
+                    <div class="phase-segment intro" data-phase="INTRO">Intro<br>0-4s</div>
+                    <div class="phase-segment g4_solo" data-phase="G4_SOLO">G4 Solo<br>4-12s</div>
+                    <div class="phase-segment unison" data-phase="UNISON">Unison<br>12-24s</div>
+                    <div class="phase-segment outro" data-phase="OUTRO">Outro<br>24-28.76s</div>
+                    <div class="progress-indicator" id="progress-indicator" style="left: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- 3D云台可视化 -->
+            <div class="panel">
+                <h2>🎯 云台阵型 / Gimbal Formation</h2>
+                <div class="gimbal-3d-container">
+                    <canvas id="gimbal-3d-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="right-panel" id="gimbal-cards">
+            <!-- 云台卡片将通过JS动态生成 -->
+        </div>
+    </div>
+    
+    <!-- 状态栏 -->
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-label">⏱️ 时间:</span>
+            <span class="status-value" id="time-display">00:00.00</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">🎵 Beat:</span>
+            <span class="status-value" id="beat-display">00</span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">📊 相位:</span>
+            <span class="status-value" id="phase-display">INIT</span>
+        </div>
+        <div class="connection-status">
+            <span class="status-label">连接状态:</span>
+            <div class="connection-dot" id="connection-dot"></div>
+            <span class="status-value" id="connection-text">未连接</span>
+        </div>
+    </div>
+    
+    <script>
+        // WebSocket 连接
+        const ws = new WebSocket('ws://localhost:8765');
+        
+        // 状态
+        let gimbalData = {};
+        let audioData = {};
+        let isConnected = false;
+        
+        // DOM 元素
+        const beatIndicator = document.getElementById('beat-indicator');
+        const timeDisplay = document.getElementById('time-display');
+        const beatDisplay = document.getElementById('beat-display');
+        const phaseDisplay = document.getElementById('phase-display');
+        const connectionDot = document.getElementById('connection-dot');
+        const connectionText = document.getElementById('connection-text');
+        const progressIndicator = document.getElementById('progress-indicator');
+        
+        // 初始化云台卡片
+        const gimbalInfo = {
+            'G1': { role: '左翼', color: '#00d4ff' },
+            'G2': { role: '左中', color: '#00d4ff' },
+            'G3': { role: '左近', color: '#00d4ff' },
+            'G4': { role: '主领', color: '#ff0066', isLeader: true },
+            'G5': { role: '右近', color: '#00d4ff' },
+            'G6': { role: '右中', color: '#00d4ff' },
+            'G7': { role: '右翼', color: '#00d4ff' }
+        };
+        
+        function initGimbalCards() {
+            const container = document.getElementById('gimbal-cards');
+            Object.keys(gimbalInfo).forEach(id => {
+                const info = gimbalInfo[id];
+                const card = document.createElement('div');
+                card.className = `gimbal-card ${info.isLeader ? 'g4' : ''}`;
+                card.id = `card-${id}`;
+                card.innerHTML = `
+                    <div class="gimbal-header">
+                        <span class="gimbal-name">${id}</span>
+                        <span class="gimbal-role">${info.role}</span>
+                    </div>
+                    <div class="angle-display">
+                        <div class="angle-box">
+                            <div class="angle-label">ROLL</div>
+                            <div class="angle-value roll" id="${id}-roll">0.0°</div>
+                        </div>
+                        <div class="angle-box">
+                            <div class="angle-label">PITCH</div>
+                            <div class="angle-value pitch" id="${id}-pitch">0.0°</div>
+                        </div>
+                        <div class="angle-box">
+                            <div class="angle-label">YAW</div>
+                            <div class="angle-value yaw" id="${id}-yaw">0.0°</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+        
+        // WebSocket 事件
+        ws.onopen = () => {
+            isConnected = true;
+            connectionDot.classList.add('connected');
+            connectionText.textContent = '已连接';
+            console.log('[VIZ] Connected to server');
+        };
+        
+        ws.onclose = () => {
+            isConnected = false;
+            connectionDot.classList.remove('connected');
+            connectionText.textContent = '未连接';
+            console.log('[VIZ] Disconnected from server');
+        };
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            gimbalData = data.gimbals;
+            audioData = data.audio;
+            updateUI();
+        };
+        
+        // 更新 UI
+        function updateUI() {
+            // 更新时间
+            const t = audioData.current_time || 0;
+            const minutes = Math.floor(t / 60);
+            const seconds = Math.floor(t % 60);
+            const ms = Math.floor((t % 1) * 100);
+            timeDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+            
+            // 更新 beat
+            const beat = Math.floor(t * 2);
+            beatDisplay.textContent = String(beat).padStart(2, '0');
+            
+            // 更新相位
+            phaseDisplay.textContent = audioData.phase_name || 'INIT';
+            
+            // 更新相位高亮
+            document.querySelectorAll('.phase-segment').forEach(seg => {
+                seg.classList.remove('active');
+                if (seg.dataset.phase === audioData.phase_name) {
+                    seg.classList.add('active');
+                }
+            });
+            
+            // 更新进度条
+            const progress = (t / 28.76) * 100;
+            progressIndicator.style.left = `${progress}%`;
+            
+            // 更新 beat 指示器
+            if (audioData.beat_phase < 0.1) {
+                beatIndicator.classList.add('active');
+            } else {
+                beatIndicator.classList.remove('active');
+            }
+            
+            // 更新云台数据
+            Object.keys(gimbalData).forEach(id => {
+                const g = gimbalData[id];
+                const rollEl = document.getElementById(`${id}-roll`);
+                const pitchEl = document.getElementById(`${id}-pitch`);
+                const yawEl = document.getElementById(`${id}-yaw`);
+                
+                if (rollEl) rollEl.textContent = `${g.roll.toFixed(1)}°`;
+                if (pitchEl) pitchEl.textContent = `${g.pitch.toFixed(1)}°`;
+                if (yawEl) yawEl.textContent = `${g.yaw.toFixed(1)}°`;
+            });
+        }
+        
+        // 绘制波形
+        const waveformCanvas = document.getElementById('waveform-canvas');
+        const waveformCtx = waveformCanvas.getContext('2d');
+        
+        function resizeCanvas() {
+            waveformCanvas.width = waveformCanvas.offsetWidth;
+            waveformCanvas.height = waveformCanvas.offsetHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        function drawWaveform() {
+            const ctx = waveformCtx;
+            const w = waveformCanvas.width;
+            const h = waveformCanvas.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            // 背景网格
+            ctx.strokeStyle = 'rgba(0,212,255,0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < w; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, h);
+                ctx.stroke();
+            }
+            for (let i = 0; i < h; i += 25) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(w, i);
+                ctx.stroke();
+            }
+            
+            // 绘制波形
+            if (audioData.waveform && audioData.waveform.length > 0) {
+                ctx.strokeStyle = '#00d4ff';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                const waveform = audioData.waveform;
+                const centerY = h / 2;
+                const step = w / waveform.length;
+                
+                for (let i = 0; i < waveform.length; i++) {
+                    const x = i * step;
+                    const y = centerY - waveform[i] * (h / 2 - 10);
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.stroke();
+                
+                // 填充渐变
+                const gradient = ctx.createLinearGradient(0, 0, 0, h);
+                gradient.addColorStop(0, 'rgba(0,212,255,0.3)');
+                gradient.addColorStop(0.5, 'rgba(0,212,255,0.1)');
+                gradient.addColorStop(1, 'rgba(0,212,255,0.3)');
+                ctx.fillStyle = gradient;
+                ctx.lineTo(w, centerY);
+                ctx.lineTo(0, centerY);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // 中心线
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(0, h / 2);
+            ctx.lineTo(w, h / 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            requestAnimationFrame(drawWaveform);
+        }
+        drawWaveform();
+        
+        // 绘制 3D 云台阵型
+        const gimbal3dCanvas = document.getElementById('gimbal-3d-canvas');
+        const gimbal3dCtx = gimbal3dCanvas.getContext('2d');
+        
+        function resize3dCanvas() {
+            gimbal3dCanvas.width = gimbal3dCanvas.offsetWidth;
+            gimbal3dCanvas.height = gimbal3dCanvas.offsetHeight;
+        }
+        window.addEventListener('resize', resize3dCanvas);
+        resize3dCanvas();
+        
+        function drawGimbalFormation() {
+            const ctx = gimbal3dCtx;
+            const w = gimbal3dCanvas.width;
+            const h = gimbal3dCanvas.height;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            const centerX = w / 2;
+            const centerY = h / 2;
+            const spacing = Math.min(w, h) / 10;
+            
+            // 绘制位置（G1-G7 从左到右）
+            const positions = [
+                { id: 'G1', x: -3 },
+                { id: 'G2', x: -2 },
+                { id: 'G3', x: -1 },
+                { id: 'G4', x: 0 },
+                { id: 'G5', x: 1 },
+                { id: 'G6', x: 2 },
+                { id: 'G7', x: 3 }
+            ];
+            
+            positions.forEach((pos, index) => {
+                const g = gimbalData[pos.id];
+                if (!g) return;
+                
+                const x = centerX + pos.x * spacing * 2;
+                const baseY = centerY;
+                
+                // 绘制云台基座
+                ctx.fillStyle = pos.id === 'G4' ? '#ff0066' : '#00d4ff';
+                ctx.beginPath();
+                ctx.arc(x, baseY, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制朝向（根据 yaw）
+                const yawRad = (g.yaw * Math.PI) / 180;
+                const lineLength = 25;
+                const endX = x + Math.sin(yawRad) * lineLength;
+                const endY = baseY - Math.cos(yawRad) * lineLength;
+                
+                ctx.strokeStyle = pos.id === 'G4' ? '#ff0066' : '#00d4ff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(x, baseY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                
+                // 绘制 pitch 指示（垂直线长度）
+                const pitchLen = (g.pitch / 90) * 15;
+                ctx.strokeStyle = '#4ecdc4';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(endX, endY);
+                ctx.lineTo(endX, endY - pitchLen);
+                ctx.stroke();
+                
+                // 绘制 roll 指示（左右小线）
+                const rollRad = (g.roll * Math.PI) / 180;
+                const rollLen = 8;
+                ctx.strokeStyle = '#ff6b6b';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(endX - Math.cos(yawRad) * rollLen, endY - Math.sin(yawRad) * rollLen);
+                ctx.lineTo(endX + Math.cos(yawRad) * rollLen, endY + Math.sin(yawRad) * rollLen);
+                ctx.stroke();
+                
+                // 标签
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(pos.id, x, baseY + 25);
+            });
+            
+            // 绘制连接线
+            ctx.strokeStyle = 'rgba(0,212,255,0.2)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(centerX - 6 * spacing, centerY);
+            ctx.lineTo(centerX + 6 * spacing, centerY);
+            ctx.stroke();
+            
+            requestAnimationFrame(drawGimbalFormation);
+        }
+        drawGimbalFormation();
+        
+        // 初始化
+        initGimbalCards();
+    </script>
+</body>
+</html>
